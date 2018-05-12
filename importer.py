@@ -34,12 +34,12 @@ eps = 2.0 * max_epsilon / 255.0
 batch_shape = [batch_size, image_height, image_width, 3]
 num_classes = 1001
 
-def load_images(input_dir, batch_shape):
+def load_images_generator(batch_shape):
     images = np.zeros(batch_shape)
     filenames = []
     idx = 0
     batch_size = batch_shape[0]
-    for filepath in sorted(tf.gfile.Glob(os.path.join(input_dir, '*.png'))):
+    for filepath in sorted(tf.gfile.Glob(os.path.join(input_dir_images, '*.png'))):
         with tf.gfile.Open(filepath, "rb") as f:
             images[idx, :, :, :] = imread(f, mode='RGB').astype(np.float)*2.0/255.0 - 1.0
         filenames.append(os.path.basename(filepath))
@@ -52,23 +52,33 @@ def load_images(input_dir, batch_shape):
     if idx > 0:
         yield filenames, images
 
-def show_orig_image(fname):
-    image = cv2.imread(os.path.join(input_dir,fname))
-    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-    
-    
 
 def show_image(a, fmt='png'):
     a = np.uint8((a+1.0)/2.0*255.0)    
+    #plt.imshow(cv2.cvtColor(a, cv2.COLOR_BGR2RGB))
     plt.imshow(a)
+    plt.show()
+    
+    
+def filename_to_class(filenames):
+    image_classes = pd.read_csv(os.path.join(input_dir_data,"images.csv"))
+    image_metadata = pd.DataFrame({"ImageId": [f[:-4] for f in filenames]}).merge(image_classes,on="ImageId")
+    classes = image_metadata["TrueLabel"].tolist()
+    return classes 
+
+def class_to_name(classes):
+    categories = pd.read_csv(os.path.join(input_dir_data,"categories.csv"))
+    classes_names = (pd.DataFrame({"CategoryId": classes}).merge(categories, on="CategoryId")["CategoryName"].tolist())
+    return classes_names    
     
     
 def test():
     #Read one image per iteration
     images_per_iteration = 1 
-    image_iterator = load_images(input_dir_images, [images_per_iteration, image_height, image_width, 3])
+    image_iterator = load_images_generator(input_dir_images, [images_per_iteration, image_height, image_width, 3])
     count = 0
     filenames, images = next(image_iterator,(None,None))
+    return filenames
     count  += len(images)
     while filenames is not None:        
         filenames, images = next(image_iterator,(None,None))
