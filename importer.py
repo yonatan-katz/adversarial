@@ -27,7 +27,8 @@ input_dir_images     = os.path.join(input_dir_data,"images")
 max_epsilon       = 16.0
 image_width       = 299
 image_height      = 299
-batch_size        = 16
+batch_size        = 1
+dataset_test_size = 1000 #number of the images in the data set
 
 eps = 2.0 * max_epsilon / 255.0
 batch_shape = [batch_size, image_height, image_width, 3]
@@ -60,5 +61,20 @@ def show_orig_image(fname):
 def show_image(a, fmt='png'):
     a = np.uint8((a+1.0)/2.0*255.0)    
     plt.imshow(a)
+    
+    
+def test():
+    #Read one image per iteration
+    images_per_iteration = 1 
+    image_iterator = load_images(input_dir_images, [images_per_iteration, image_height, image_width, 3])
+    count = 0
+    filenames, images = next(image_iterator,(None,None))
+    count  += len(images)
+    while filenames is not None:        
+        filenames, images = next(image_iterator,(None,None))
+        if filenames is None: break
+        count  += len(images)
+        print(count)
+    return count
     
     

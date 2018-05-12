@@ -9,7 +9,9 @@ import tensorflow as tf
 from tensorflow.contrib.slim.nets import inception
 import adverserial_2017.importer as importer
 import pandas as pd
+import numpy as np
 import os
+
 
 slim = tf.contrib.slim
 
@@ -31,22 +33,11 @@ class InceptionModel(object):
         return probs
     
     
-    
-def test():
-    categories = pd.read_csv(os.path.join(importer.input_dir_data,"categories.csv"))
-    image_classes = pd.read_csv(os.path.join(importer.input_dir_data,"images.csv"))
-    image_iterator = importer.load_images(importer.input_dir_images, importer.batch_shape)
-    
-    # get first batch of images
-    filenames, images = next(image_iterator)
-    image_metadata = pd.DataFrame({"ImageId": [f[:-4] for f in filenames]}).merge(image_classes,on="ImageId")
-    true_classes = image_metadata["TrueLabel"].tolist()
-    target_classes = true_labels = image_metadata["TargetClass"].tolist()
-    true_classes_names = (pd.DataFrame({"CategoryId": true_classes})
-                        .merge(categories, on="CategoryId")["CategoryName"].tolist())
-    target_classes_names = (pd.DataFrame({"CategoryId": target_classes})
-                          .merge(categories, on="CategoryId")["CategoryName"].tolist())
-
+'''Evaluate model accuracy on the ImageNet original data set
+'''
+def evaluate_orig_test():    
+    image_classes = pd.read_csv(os.path.join(importer.input_dir_data,"images.csv"))    
+    accuracy_vector = []
 
     with tf.Graph().as_default():
         x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
@@ -54,26 +45,39 @@ def test():
         with slim.arg_scope(inception.inception_v3_arg_scope()):
             _, end_points = inception.inception_v3(x_input, num_classes=importer.num_classes, is_training=False)
         
-        predicted_labels = tf.argmax(end_points['Predictions'], 1)
+        predicted_labels = tf.argmax(end_points['Predictions'], 1) 
     
+
         #saver = tf.train.Saver(slim.get_model_variables())
-        session_creator = tf.train.ChiefSessionCreator(
+        session_creator = tf.train.ChiefSessionCreator(                          
                           #scaffold=tf.train.Scaffold(saver=saver),
                           checkpoint_filename_with_path=importer.checkpoint_path,
                           master=importer.tensorflow_master)
     
-        with tf.train.MonitoredSession(session_creator=session_creator) as sess:
-            predicted_classes = sess.run(predicted_labels, feed_dict={x_input: images})
+        #TODO: I roun out of memory when loading all images to the memory,
+        #      Make one image prediction in each iteration
+        image_iterator = importer.load_images(importer.input_dir_images, importer.batch_shape)                      
+        counter = 0        
+        while True:                    
+            with tf.train.MonitoredSession(session_creator=session_creator) as sess:
+                while True:
+                    filenames, images = next(image_iterator,(None,None))                    
+                    if filenames is None: break
+                    image_metadata = pd.DataFrame({"ImageId": [f[:-4] for f in filenames]}).merge(image_classes,on="ImageId")
+                    true_classes = image_metadata["TrueLabel"].tolist()
+                    predicted_classes = sess.run(predicted_labels, feed_dict={x_input: images})            
+                    accuracy_vector.append((true_classes==predicted_classes)[0])
+                    print("Pricessing image num:{}".format(counter))            
+                    counter += 1
+                    if counter >10:
+                        break
+            break            
+            
         
-        print ("Net output: {}".format(predicted_classes))
+        return accuracy_vector
             
-        predicted_classes_names = (pd.DataFrame({"CategoryId": predicted_classes})
-            .merge(categories, on="CategoryId")["CategoryName"].tolist())
+                
             
-        for i in range(len(images)):
-            print("UNMODIFIED IMAGE (left)",
-                  "\n\tPredicted class:", predicted_classes_names[i],
-                  "\n\tTrue class:     ", true_classes_names[i])
             
         
         
