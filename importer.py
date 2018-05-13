@@ -18,6 +18,9 @@ from scipy.misc import imread
 from scipy.misc import imsave
 import matplotlib.pyplot as plt
 import cv2
+import glob
+from optparse import OptionParser
+import sys
 
 
 tensorflow_master = ""
@@ -86,5 +89,40 @@ def test():
         count  += len(images)
         print(count)
     return count
+
+def dissimilarity(folder): 
+    S = 0.0
+    N = 0
+    for ffname in glob.glob(os.path.join(folder, '*.png')):        
+        fname = os.path.basename(ffname)
+        orig_image = imread(os.path.join(input_dir_images,fname),mode='RGB').flatten()
+        adversarial_image = imread(ffname,mode='RGB').flatten()
+        S += np.linalg.norm([orig_image - adversarial_image]) / np.linalg.norm([orig_image])
+        N += 1
+    return S/N
+
+
+def main():
+    parser = OptionParser()
+    parser.add_option("-d","--dissimilarity",dest="dissimilarity",help="dissimilarity between input folder and orig images")    
+    (options, args) = parser.parse_args()    
+    
+    if options.dissimilarity:
+      d = dissimilarity(options.dissimilarity) 
+      print("dissimilarity:{}".format(d))
+      sys.exit(0)
+    
+    
+    parser.print_help()
+    
+    
+if __name__ == "__main__":
+    main()
+        
+        
+        
+    
+    
+    
     
     

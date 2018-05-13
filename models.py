@@ -11,7 +11,13 @@ from tensorflow.contrib.slim.nets import inception
 import adverserial_2017.importer as importer
 import pandas as pd
 import numpy as np
+import sys
 import os
+from optparse import OptionParser
+import matplotlib.image as mpimg
+
+
+ADVERSARIAL_FOLDER = "output/adversarial"
 
 slim = tf.contrib.slim
 
@@ -67,6 +73,52 @@ def fgsm_generator(batch_shape=importer.batch_shape,is_return_orig_images=False)
                         yield  filenames,adversarial_images
     
     return  next_images()
+
+
+
+def fgsm_attack():
+    generator = fgsm_generator(importer.batch_shape)
+    print("fgsm eps:{}".format(importer.eps))
+    folder_path = os.path.join(ADVERSARIAL_FOLDER,"fgsm.{}".format(importer.eps))
+    os.makedirs(folder_path,exist_ok=True)
+    counter = 0
+    while counter < 10 :
+        filenames, images = next(generator,(None,None))
+        if filenames is None:
+            break
+        for fname,image in zip(filenames, images):
+            image = np.uint8((image+1.0)/2.0*255.0)
+            ffname = os.path.join(folder_path,fname)
+            mpimg.imsave(ffname, image)
+            print("Adversarial {} is generated".format(ffname))       
+            if counter > 10:
+                break
+            counter += 1
+        
+            
+
+
+def main():
+    parser = OptionParser()
+    parser.add_option("-a","--attack",dest="attack",help="mode:[fgsm]")
+    parser.add_option("--eps",dest="eps",help="FGSM eps parameter",type=float,default=importer.eps)
+    (options, args) = parser.parse_args()
+    importer.eps = options.eps
+    
+    if not options.attack:
+        parser.print_help()
+        sys.exit(1)
+    if options.attack == "fgsm":
+        fgsm_attack()
+        sys.exit(1)
+        
+    parser.print_help()
+    
+    
+if __name__ == "__main__":
+    main()
+    
+    
 
     
     
