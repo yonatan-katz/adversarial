@@ -42,7 +42,7 @@ class InceptionModel(object):
 '''Create adversarial images from the orignal data set
 '''
         
-def fgsm_generator(batch_shape=importer.batch_shape,is_return_orig_images=False):                         
+def fgsm_generator(batch_shape,eps,is_return_orig_images=False):                         
     
     def next_images():
         tf.logging.set_verbosity(tf.logging.INFO)
@@ -53,7 +53,8 @@ def fgsm_generator(batch_shape=importer.batch_shape,is_return_orig_images=False)
             model = InceptionModel(importer.num_classes)
         
             fgsm  = FastGradientMethod(model)
-            x_adv = fgsm.generate(x_input, eps=importer.eps, clip_min=-1., clip_max=1.)
+            #x_adv = fgsm.generate(x_input, eps=eps, clip_min=-1., clip_max=1.)
+            x_adv = fgsm.generate(x_input, eps=eps)
         
             saver = tf.train.Saver(slim.get_model_variables())
             session_creator = tf.train.ChiefSessionCreator(
@@ -76,10 +77,10 @@ def fgsm_generator(batch_shape=importer.batch_shape,is_return_orig_images=False)
 
 
 
-def fgsm_attack():
-    generator = fgsm_generator(importer.batch_shape)
-    print("fgsm eps:{}".format(importer.eps))
-    folder_path = os.path.join(ADVERSARIAL_FOLDER,"fgsm.{}".format(importer.eps))
+def fgsm_attack(eps):
+    generator = fgsm_generator(importer.batch_shape,eps)
+    print("fgsm eps:{}".format(eps))
+    folder_path = os.path.join(ADVERSARIAL_FOLDER,"fgsm.{}".format(eps))
     os.makedirs(folder_path,exist_ok=True)
     counter = 0
     while counter < 10 :
@@ -102,14 +103,13 @@ def main():
     parser = OptionParser()
     parser.add_option("-a","--attack",dest="attack",help="mode:[fgsm]")
     parser.add_option("--eps",dest="eps",help="FGSM eps parameter",type=float,default=importer.eps)
-    (options, args) = parser.parse_args()
-    importer.eps = options.eps
+    (options, args) = parser.parse_args()    
     
     if not options.attack:
         parser.print_help()
         sys.exit(1)
     if options.attack == "fgsm":
-        fgsm_attack()
+        fgsm_attack(options.eps)
         sys.exit(1)
         
     parser.print_help()

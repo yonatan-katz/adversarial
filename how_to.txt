@@ -1,0 +1,3 @@
+check for dissimilarity: python importer.py -d output/adversarial/fgsm.0.001
+evaluate model score:python evaluation.py -m manual -d output/adversarial/fgsm.0.001/
+make attack: python models.py -a fgsm --eps=0.002

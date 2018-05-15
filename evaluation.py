@@ -60,7 +60,8 @@ def evaluate_model(image_iterator):
 
 def main():   
     parser = OptionParser()
-    parser.add_option("-m","--mode",dest="mode",help="mode:[orig,fgsm]")    
+    parser.add_option("-m","--mode",dest="mode",help="mode:[orig,fgsm,manual]")    
+    parser.add_option("-d","--dir",dest="directory",help="directory contains images for testing")    
     parser.add_option("--eps",dest="eps",help="FGSM eps parameter",type=float,default=importer.eps)    
     
     (options, args) = parser.parse_args()    
@@ -75,6 +76,9 @@ def main():
         generator = importer.load_images_generator(importer.batch_shape)
     elif options.mode == "fgsm":
         generator = models.fgsm_generator(importer.batch_shape)        
+    elif options.mode == "manual":
+        importer.input_dir_images = options.directory
+        generator = importer.load_images_generator(importer.batch_shape)        
         
     accuracy = evaluate_model(generator)
     true_labels = np.sum(accuracy)
@@ -88,4 +92,5 @@ if __name__== "__main__":
     
     
 
+    
     

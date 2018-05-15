@@ -95,9 +95,13 @@ def dissimilarity(folder):
     N = 0
     for ffname in glob.glob(os.path.join(folder, '*.png')):        
         fname = os.path.basename(ffname)
-        orig_image = imread(os.path.join(input_dir_images,fname),mode='RGB').flatten()
-        adversarial_image = imread(ffname,mode='RGB').flatten()
-        S += np.linalg.norm([orig_image - adversarial_image]) / np.linalg.norm([orig_image])
+        orig_fname = os.path.join(input_dir_images,fname)
+        orig_image = imread(orig_fname,mode='RGB').flatten()        
+        adversarial_image = imread(ffname,mode='RGB').flatten()        
+        s = np.linalg.norm([orig_image - adversarial_image]) / np.linalg.norm([orig_image])
+        g = np.sum(orig_image-adversarial_image)
+        print("{}:{}:{}:{}".format(orig_fname,ffname,s,g))
+        S += s
         N += 1
     return S/N
 
