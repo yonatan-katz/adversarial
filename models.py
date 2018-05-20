@@ -8,13 +8,15 @@ Created on Fri May 11 21:36:44 2018
 import tensorflow as tf
 from cleverhans.attacks import FastGradientMethod
 from tensorflow.contrib.slim.nets import inception
-import adverserial_2017.importer as importer
+import adversarial.importer as importer
 import pandas as pd
 import numpy as np
 import sys
 import os
 from optparse import OptionParser
-import matplotlib.image as mpimg
+#import matplotlib.image as mpimg
+from scipy.misc import imsave
+
 
 
 ADVERSARIAL_FOLDER = "output/adversarial"
@@ -68,6 +70,7 @@ def fgsm_generator(batch_shape,eps,is_return_orig_images=False):
                     filenames, images = next(image_iterator,(None,None))
                     if filenames is None: break
                     adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
+                    print("Image:{}, diff:{}".format(filenames[0],np.sum(np.abs(images[0]-adversarial_images[0]))))
                     if is_return_orig_images:
                         yield  filenames,adversarial_images,images
                     else:                        
@@ -90,8 +93,8 @@ def fgsm_attack(eps):
         for fname,image in zip(filenames, images):
             image = np.uint8((image+1.0)/2.0*255.0)
             ffname = os.path.join(folder_path,fname)
-            mpimg.imsave(ffname, image)
-            print("Adversarial {} is generated".format(ffname))       
+            imsave(ffname, image)
+            print("Adversarial {} is generated,min:{},max:{}".format(ffname,np.min(image),np.max(image)))       
             if counter > 10:
                 break
             counter += 1

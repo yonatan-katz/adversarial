@@ -10,8 +10,8 @@ Created on Sat May 12 14:23:07 2018
 '''
 import tensorflow as tf
 from tensorflow.contrib.slim.nets import inception
-import adverserial_2017.importer as importer
-import adverserial_2017.models as models
+import adversarial.importer as importer
+import adversarial.models as models
 import pandas as pd
 import numpy as np
 import os
@@ -62,7 +62,7 @@ def main():
     parser = OptionParser()
     parser.add_option("-m","--mode",dest="mode",help="mode:[orig,fgsm,manual]")    
     parser.add_option("-d","--dir",dest="directory",help="directory contains images for testing")    
-    parser.add_option("--eps",dest="eps",help="FGSM eps parameter",type=float,default=importer.eps)    
+    parser.add_option("--eps",dest="eps",help="FGSM eps parameter",type=npfloat32,default=importer.eps)    
     
     (options, args) = parser.parse_args()    
     
@@ -83,7 +83,7 @@ def main():
     accuracy = evaluate_model(generator)
     true_labels = np.sum(accuracy)
     false_labels = len(accuracy) - true_labels
-    win_loss = (np.float(true_labels) / len(accuracy)) * 100.0
+    win_loss = (np.float32(true_labels) / len(accuracy)) * 100.0
     print ("true labels:{}, false labels:{},win_loss:{}".format(true_labels,false_labels,win_loss))
     
     

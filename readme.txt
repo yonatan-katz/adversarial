@@ -13,3 +13,9 @@ source activate py36
 install:
 pip install -e git+https://github.com/tensorflow/cleverhans.git#egg=cleverhans
 pip install tensorflow
+
+
+download pretrainded inception_v3 model:
+https://github.com/tensorflow/models/tree/master/research/slim
+
+and copy to :./input/inception-v3/

@@ -17,7 +17,6 @@ from PIL import Image
 from scipy.misc import imread
 from scipy.misc import imsave
 import matplotlib.pyplot as plt
-import cv2
 import glob
 from optparse import OptionParser
 import sys
@@ -44,7 +43,7 @@ def load_images_generator(batch_shape):
     batch_size = batch_shape[0]
     for filepath in sorted(tf.gfile.Glob(os.path.join(input_dir_images, '*.png'))):
         with tf.gfile.Open(filepath, "rb") as f:
-            images[idx, :, :, :] = imread(f, mode='RGB').astype(np.float)*2.0/255.0 - 1.0
+            images[idx, :, :, :] = imread(f, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
         filenames.append(os.path.basename(filepath))
         idx += 1
         if idx == batch_size:
@@ -78,10 +77,10 @@ def class_to_name(classes):
 def test():
     #Read one image per iteration
     images_per_iteration = 1 
-    image_iterator = load_images_generator(input_dir_images, [images_per_iteration, image_height, image_width, 3])
+    image_iterator = load_images_generator([images_per_iteration, image_height, image_width, 3])
     count = 0
     filenames, images = next(image_iterator,(None,None))
-    return filenames
+    return filenames,images
     count  += len(images)
     while filenames is not None:        
         filenames, images = next(image_iterator,(None,None))
@@ -96,13 +95,17 @@ def dissimilarity(folder):
     for ffname in glob.glob(os.path.join(folder, '*.png')):        
         fname = os.path.basename(ffname)
         orig_fname = os.path.join(input_dir_images,fname)
-        orig_image = imread(orig_fname,mode='RGB').flatten()        
-        adversarial_image = imread(ffname,mode='RGB').flatten()        
+        orig_image = imread(orig_fname,mode='RGB').astype(np.float32)*2.0/255.0 - 1.0      
+        adversarial_image = imread(ffname,mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+        orig_image= orig_image.flatten()
+        adversarial_image = adversarial_image.flatten()
         s = np.linalg.norm([orig_image - adversarial_image]) / np.linalg.norm([orig_image])
         g = np.sum(orig_image-adversarial_image)
         print("{}:{}:{}:{}".format(orig_fname,ffname,s,g))
+        print("min1:{},max1:{},min2:{},max2:{}".format(np.min(orig_image),
+                  np.max(orig_image),np.min(adversarial_image),np.max(adversarial_image)))
         S += s
-        N += 1
+        N += 1.0
     return S/N
 
 
