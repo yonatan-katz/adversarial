@@ -62,7 +62,7 @@ def main():
     parser = OptionParser()
     parser.add_option("-m","--mode",dest="mode",help="mode:[orig,fgsm,manual]")    
     parser.add_option("-d","--dir",dest="directory",help="directory contains images for testing")    
-    parser.add_option("--eps",dest="eps",help="FGSM eps parameter",type=npfloat32,default=importer.eps)    
+    parser.add_option("--eps",dest="eps",help="FGSM eps parameter",type=float,default=importer.eps)    
     
     (options, args) = parser.parse_args()    
     
@@ -70,12 +70,11 @@ def main():
         parser.print_help()
         sys.exit(1)
         
-    print ("Options:{}".format(options))
-    importer.eps = options.eps
+    print ("Options:{}".format(options))    
     if options.mode == "orig":
         generator = importer.load_images_generator(importer.batch_shape)
     elif options.mode == "fgsm":
-        generator = models.fgsm_generator(importer.batch_shape)        
+        generator = models.fgsm_generator(importer.batch_shape, options.eps)        
     elif options.mode == "manual":
         importer.input_dir_images = options.directory
         generator = importer.load_images_generator(importer.batch_shape)        

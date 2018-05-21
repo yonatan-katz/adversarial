@@ -37,7 +37,7 @@ batch_shape = [batch_size, image_height, image_width, 3]
 num_classes = 1001
 
 def load_images_generator(batch_shape):
-    images = np.zeros(batch_shape)
+    images = np.zeros(batch_shape,np.float32)
     filenames = []
     idx = 0
     batch_size = batch_shape[0]
@@ -90,20 +90,26 @@ def test():
     return count
 
 def dissimilarity(folder): 
+    def transform(a):
+        a = np.uint8((a+1.0)/2.0*255.0)        
+        return a        
+    
     S = 0.0
     N = 0
     for ffname in glob.glob(os.path.join(folder, '*.png')):        
         fname = os.path.basename(ffname)
         orig_fname = os.path.join(input_dir_images,fname)
-        orig_image = imread(orig_fname,mode='RGB').astype(np.float32)*2.0/255.0 - 1.0      
-        adversarial_image = imread(ffname,mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+        orig_image = imread(orig_fname,mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+        #in order to make simmilar image we have to make the same transformation as adversarial image!
+        orig_image = transform(orig_image)
+        #scaled to range [0:255], saved as uint8!
+        adversarial_image = imread(ffname,mode='RGB')
         orig_image= orig_image.flatten()
         adversarial_image = adversarial_image.flatten()
         s = np.linalg.norm([orig_image - adversarial_image]) / np.linalg.norm([orig_image])
-        g = np.sum(orig_image-adversarial_image)
-        print("{}:{}:{}:{}".format(orig_fname,ffname,s,g))
-        print("min1:{},max1:{},min2:{},max2:{}".format(np.min(orig_image),
-                  np.max(orig_image),np.min(adversarial_image),np.max(adversarial_image)))
+        #g = np.sum(orig_image-adversarial_image)
+        #print("{}:{}:{}:{}".format(orig_fname,ffname,s,g))
+        #print("min1:{},max1:{},min2:{},max2:{}".format(np.min(orig_image), np.max(orig_image),np.min(adversarial_image),np.max(adversarial_image)))
         S += s
         N += 1.0
     return S/N
