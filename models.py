@@ -9,6 +9,7 @@ import tensorflow as tf
 from cleverhans.attacks import FastGradientMethod
 from tensorflow.contrib.slim.nets import inception
 import adversarial.importer as importer
+import adversarial.config as config
 import pandas as pd
 import numpy as np
 import sys
@@ -19,9 +20,6 @@ from scipy.misc import imsave
 from scipy.misc import imread
 import json
 
-
-
-ADVERSARIAL_FOLDER = "output/adversarial"
 
 slim = tf.contrib.slim
 
@@ -72,7 +70,7 @@ def fgsm_generator(batch_shape,eps,is_return_orig_images=False):
                     filenames, images = next(image_iterator,(None,None))
                     if filenames is None: break
                     adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
-                    print("Image:{}, diff:{}".format(filenames[0],np.sum(np.abs(images[0]-adversarial_images[0]))))
+                    #print("Image:{}, diff:{}".format(filenames[0],np.sum(np.abs(images[0]-adversarial_images[0]))))
                     if is_return_orig_images:
                         yield  filenames,adversarial_images,images
                     else:                        
@@ -85,7 +83,7 @@ def fgsm_generator(batch_shape,eps,is_return_orig_images=False):
 def fgsm_attack(eps):
     generator = fgsm_generator(importer.batch_shape,eps=eps,is_return_orig_images=True)
     print("fgsm eps:{}".format(eps))
-    folder_path = os.path.join(ADVERSARIAL_FOLDER,"fgsm.{}".format(eps))
+    folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"fgsm.{}".format(eps))
     os.makedirs(folder_path,exist_ok=True)
     counter = 0
     S = 0.0    

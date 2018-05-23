@@ -12,20 +12,28 @@ import tensorflow as tf
 from tensorflow.contrib.slim.nets import inception
 import adversarial.importer as importer
 import adversarial.models as models
+import adversarial.utils as utils
 import pandas as pd
 import numpy as np
 import os
 import sys
+import json
+import adversarial.config as config
+
 from optparse import OptionParser
 
 
 slim = tf.contrib.slim
 
+
+
 def evaluate_model(image_iterator):    
     accuracy_vector = []
     graph_eavl = tf.Graph()
     print ("evaluate_model graph is ready!")
-    filenames, images = next(image_iterator,(None,None))
+    S = 0
+    filenames, adv_images,orig_images = next(image_iterator,(None,None))
+    S += utils.dissimilariry(orig_images,adv_images)
     with graph_eavl.as_default():    
         x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
 
@@ -46,16 +54,22 @@ def evaluate_model(image_iterator):
                 while True:                    
                     if filenames is None: break                    
                     true_classes = importer.filename_to_class(filenames)
-                    predicted_classes = sess.run(predicted_labels, feed_dict={x_input: images})            
+                    predicted_classes = sess.run(predicted_labels, feed_dict={x_input: adv_images})            
                     accuracy_vector.append((true_classes==predicted_classes)[0])
                     print("Pricessing image num:{}".format(counter))            
-                    counter += 1
-                    if counter >10:#TODO: debug!!!!
-                        break
-                    filenames, images = next(image_iterator,(None,None))
+                    #counter += 1
+                    #if counter >10:#TODO: debug!!!!
+                    #    break
+                    filenames, adv_images, orig_images = next(image_iterator,(None,None))
+                    S += utils.dissimilariry(orig_images,adv_images)
             break            
         
-    return accuracy_vector
+    true_labels = np.sum(accuracy_vector)
+    false_labels = len(accuracy_vector) - true_labels
+    win_loss = (np.float32(true_labels) / len(accuracy_vector)) * 100.0
+    dissimilarity = S
+    print ("dissimilarity:{},true labels:{}, false labels:{},win_loss:{}".format(S,true_labels,false_labels,win_loss))        
+    return win_loss,dissimilarity
     
 
 def main():   
@@ -74,16 +88,18 @@ def main():
     if options.mode == "orig":
         generator = importer.load_images_generator(importer.batch_shape)
     elif options.mode == "fgsm":
-        generator = models.fgsm_generator(importer.batch_shape, options.eps)        
+        folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"fgsm")
+        os.makedirs(folder_path,exist_ok=True)
+        generator = models.fgsm_generator(importer.batch_shape, eps=options.eps,is_return_orig_images=True)
     elif options.mode == "manual":
         importer.input_dir_images = options.directory
         generator = importer.load_images_generator(importer.batch_shape)        
         
-    accuracy = evaluate_model(generator)
-    true_labels = np.sum(accuracy)
-    false_labels = len(accuracy) - true_labels
-    win_loss = (np.float32(true_labels) / len(accuracy)) * 100.0
-    print ("true labels:{}, false labels:{},win_loss:{}".format(true_labels,false_labels,win_loss))
+    win_loss,dissimilarity = evaluate_model(generator)    
+    fname = os.path.join(folder_path,"stat_eps_{}".format(options.eps))
+    stat = {"win_loss":win_loss,"dissimilarity":dissimilarity}
+    with open(fname, 'w') as file:
+        file.write(json.dumps(stat))     
     
     
 if __name__== "__main__":
