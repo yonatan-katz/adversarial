@@ -7,6 +7,10 @@ Created on Wed May 23 20:37:11 2018
 """
 
 import numpy as np
+import glob
+import pandas as pd
+import os
+import json
 
 '''Calculate euclidian distance between two image arrays
 '''
@@ -18,4 +22,16 @@ def dissimilariry(orig_images,adv_images):
      
         
     
+def create_perf_vector(folder):    
+    pattern = os.path.join(folder,"stat_eps*")    
+    dissimilarity = []
+    win_loss = []
+    for fname in glob.glob(pattern):        
+        with open(fname, 'r') as file:
+           d = json.load(file) 
+           dissimilarity.append(float(d['dissimilarity']) / 1000.0)#we work with data set of 1000 images!
+           win_loss.append(float(d['win_loss']))
+           
+    df = pd.DataFrame(win_loss,index=dissimilarity)
+    return df.sort_index()
     

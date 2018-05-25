@@ -19,7 +19,7 @@ import os
 import sys
 import json
 import adversarial.config as config
-
+import sys
 from optparse import OptionParser
 
 
@@ -48,21 +48,24 @@ def evaluate_model(image_iterator):
         #TODO: I run out of memory when loading all images to the memory,
         #      Make one image prediction in each iteration
         #image_iterator = importer.load_images_generator(importer.input_dir_images, importer.batch_shape)                      
-        counter = 0        
-        while True:                    
-            with tf.train.MonitoredSession(session_creator=session_creator) as sess:
-                while True:                    
-                    if filenames is None: break                    
-                    true_classes = importer.filename_to_class(filenames)
-                    predicted_classes = sess.run(predicted_labels, feed_dict={x_input: adv_images})            
-                    accuracy_vector.append((true_classes==predicted_classes)[0])
-                    print("Pricessing image num:{}".format(counter))            
-                    #counter += 1
-                    #if counter >10:#TODO: debug!!!!
-                    #    break
-                    filenames, adv_images, orig_images = next(image_iterator,(None,None))
-                    S += utils.dissimilariry(orig_images,adv_images)
-            break            
+        counter = 1
+        with tf.train.MonitoredSession(session_creator=session_creator) as sess:
+            while True:                    
+                if filenames is None: break                    
+                true_classes = importer.filename_to_class(filenames)
+                predicted_classes = sess.run(predicted_labels, feed_dict={x_input: adv_images})            
+                accuracy_vector.append((true_classes==predicted_classes)[0])
+                print("Pricessing image num:{}".format(counter))                            
+                sys.stdout.flush()                
+                filenames, adv_images, orig_images = next(image_iterator,(None,None))
+                S += utils.dissimilariry(orig_images,adv_images)
+                counter +=1 
+                if counter > 999:
+                    break
+                            
+                
+    
+        
         
     true_labels = np.sum(accuracy_vector)
     false_labels = len(accuracy_vector) - true_labels
