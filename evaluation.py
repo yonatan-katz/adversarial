@@ -22,10 +22,7 @@ import adversarial.config as config
 import sys
 from optparse import OptionParser
 
-
 slim = tf.contrib.slim
-
-
 
 def evaluate_model(image_iterator):    
     accuracy_vector = []
@@ -60,7 +57,7 @@ def evaluate_model(image_iterator):
                 filenames, adv_images, orig_images = next(image_iterator,(None,None))
                 S += utils.dissimilariry(orig_images,adv_images)
                 counter +=1 
-                if counter > 999:
+                if counter > 999:                
                     break
                             
                 
@@ -77,26 +74,18 @@ def evaluate_model(image_iterator):
 
 def main():   
     parser = OptionParser()
-    parser.add_option("-m","--mode",dest="mode",help="mode:[orig,fgsm,manual]")    
-    parser.add_option("-d","--dir",dest="directory",help="directory contains images for testing")    
-    parser.add_option("--eps",dest="eps",help="FGSM eps parameter",type=float,default=importer.eps)    
+    parser.add_option("-m","--mode",dest="mode",help="mode:[fgsm,ifgsm,deep_fool,carlini_wagner]")    
+    parser.add_option("--eps",dest="eps",help="eps parameter",type=float,default=importer.eps)    
     
     (options, args) = parser.parse_args()    
     
     if not options.mode:
         parser.print_help()
-        sys.exit(1)
-        
-    print ("Options:{}".format(options))    
-    if options.mode == "orig":
-        generator = importer.load_images_generator(importer.batch_shape)
-    elif options.mode == "fgsm":
-        folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"fgsm")
-        os.makedirs(folder_path,exist_ok=True)
-        generator = models.fgsm_generator(importer.batch_shape, eps=options.eps,is_return_orig_images=True)
-    elif options.mode == "manual":
-        importer.input_dir_images = options.directory
-        generator = importer.load_images_generator(importer.batch_shape)        
+        sys.exit(1)        
+    
+    folder_path = os.path.join(config.ADVERSARIAL_FOLDER,options.mode)
+    os.makedirs(folder_path,exist_ok=True)
+    generator = models.adversarial_generator(options.mode, importer.batch_shape, eps=options.eps,is_return_orig_images=True)
         
     win_loss,dissimilarity = evaluate_model(generator)    
     fname = os.path.join(folder_path,"stat_eps_{}".format(options.eps))
