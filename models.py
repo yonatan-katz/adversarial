@@ -17,6 +17,7 @@ import pandas as pd
 import numpy as np
 import sys
 import os
+from cleverhans.model import Model
 from optparse import OptionParser
 #import matplotlib.image as mpimg
 from scipy.misc import imsave
@@ -91,7 +92,37 @@ def adversarial_generator(mode,batch_shape,eps,is_return_orig_images=False):
                     else:                        
                         yield  filenames,adversarial_images
     
-    return  next_images()       
+    return  next_images()   
+
+
+
+def test_deep_full():
+    class SimpleModel(Model):
+        """A very simple neural network
+        """
+        def get_logits(self, x):
+            W1 = tf.constant([[1.5, .3], [-2, 0.3]], dtype=tf.as_dtype(x.dtype))
+            h1 = tf.nn.sigmoid(tf.matmul(x, W1))
+            W2 = tf.constant([[-2.4, 1.2], [0.5, -2.3]], dtype=tf.as_dtype(x.dtype))
+    
+            res = tf.matmul(h1, W2)
+            return res
+    
+    
+    sess = tf.Session()
+    model = SimpleModel()
+    attack = DeepFool(model=model, sess=sess)
+    x_val = np.random.rand(100, 2)
+    x_val = np.array(x_val, dtype=np.float32)
+
+    x_adv = attack.generate_np(
+            x_val, over_shoot=0.02, max_iter=5,
+            nb_candidate=2, clip_min=-5,
+            clip_max=5)
+    print("Run grapth")
+    adversarial_images = sess.run(model(x_adv))
+    
+    return adversarial_images  
    
     
     
