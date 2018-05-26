@@ -96,7 +96,7 @@ def adversarial_generator(mode,batch_shape,eps,is_return_orig_images=False):
 
 
 
-def test_deep_full():
+def test_deep_full_simple_model():
     class SimpleModel(Model):
         """A very simple neural network
         """
@@ -118,11 +118,53 @@ def test_deep_full():
     x_adv = attack.generate_np(
             x_val, over_shoot=0.02, max_iter=5,
             nb_candidate=2, clip_min=-5,
-            clip_max=5)
-    print("Run grapth")
-    adversarial_images = sess.run(model(x_adv))
+            clip_max=5)    
+    adversarial_images = sess.run(model(x_adv))    
+    print("adversarial_images shape:{}".format(adversarial_images.shape))
     
-    return adversarial_images  
+    
+def test_deep_full_inception_v3_model():
+    class Inception_V3_Model(Model):
+        """A very simple neural network
+        """        
+        def get_logits(self, x_input):
+            NUM_CLASSES = 2
+            """Constructs model and return probabilities for given input."""
+            #reuse = True if self.built else None
+            with slim.arg_scope(inception.inception_v3_arg_scope()):
+                _, end_points = inception.inception_v3(
+                                x_input, num_classes=NUM_CLASSES, is_training=False,
+                                reuse=False)
+            self.built = True
+            output = end_points['Predictions']
+            probs = output.op.inputs[0]
+            return probs
+        
+        
+    
+    x_val = np.random.rand(100, 299,299,3)
+    x_val = np.array(x_val, dtype=np.float32)
+    model = Inception_V3_Model()
+    x_input = tf.placeholder(tf.float32, shape=[1,299,299,3])
+    tf.logging.set_verbosity(tf.logging.DEBUG)    
+    #saver = tf.train.Saver(slim.get_model_variables())
+    session_creator = tf.train.ChiefSessionCreator(
+                      #scaffold=tf.train.Scaffold(saver=saver),
+                      checkpoint_filename_with_path=importer.checkpoint_path,
+                      master=importer.tensorflow_master)    
+    
+    #attack = DeepFool(model=model, sess=sess)
+    attack = DeepFool(model=model)
+    x_adv = attack.generate(
+                x_val, over_shoot=0.02, max_iter=5,
+                nb_candidate=2, clip_min=-5,
+                clip_max=5)    
+    with tf.train.MonitoredSession(session_creator=session_creator) as sess:        
+        adversarial_images = sess.run(x_adv,feed_dict={x_input: x_val})
+        print("adversarial_images shape:{}".format(adversarial_images.shape))
+
+if __name__ == "__main__":
+    test_deep_full_inception_v3_model()
    
     
     
