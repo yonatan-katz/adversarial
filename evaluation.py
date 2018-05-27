@@ -60,7 +60,7 @@ def evaluate_model(image_iterator,image_saver):
                 image_saver(orig_images,filenames)
                 S += utils.dissimilariry(orig_images,adv_images)
                 counter +=1 
-                if counter > 3:
+                if counter > 999:
                     break
                             
                 
