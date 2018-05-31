@@ -89,6 +89,8 @@ def adversarial_generator(mode,batch_shape,eps,is_return_orig_images=False):
                 params['max_iter'] = 5
             elif mode == 'carlini_wagner':
                 graph = CarliniWagnerL2(model)
+                params["confidence"] = 0
+                params["initial_const"] = 10
                 #TODO: to set hyper parameter
                 
             print('graph params: {}'.format(params))
