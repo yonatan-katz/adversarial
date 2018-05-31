@@ -12,6 +12,7 @@ from cleverhans.attacks import DeepFool
 from cleverhans.attacks import CarliniWagnerL2
 from tensorflow.contrib.slim.nets import inception
 import adversarial.importer as importer
+import adversarial.utils as utils
 import adversarial.config as config
 import pandas as pd
 import numpy as np
@@ -141,10 +142,7 @@ def test_deep_full_simple_model():
     ligits_val = sess.run(logits)
     print("Logits: {}, shape:{}".format(ligits_val,ligits_val.shape))       
 
-    x_adv = attack.generate_np(
-            x_val, over_shoot=0.02, max_iter=5,
-            nb_candidate=2, clip_min=-5,
-            clip_max=5)    
+    x_adv = attack.generate_np(x_val,max_iter=5)    
     adversarial_images = sess.run(model(x_adv))    
     print("adversarial_images shape:{}".format(adversarial_images.shape))
     
@@ -181,9 +179,9 @@ def test_deep_full_inception_v3_model():
     tf.reset_default_graph()        
     sess = tf.Session()
     x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
+    folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"test_deep_full_inception_v3_model")
+    os.makedirs(folder_path,exist_ok=True)
     with tf.Session() as sess:
-        #x_val = np.random.rand(1, 299,299,3)
-        #x_val = np.array(x_val, dtype=np.float32)
         image_iterator = importer.load_images_generator(importer.batch_shape)
         filenames, images = next(image_iterator,(None,None))
         model = Inception_V3_Model(images)
@@ -200,6 +198,7 @@ def test_deep_full_inception_v3_model():
                 nb_candidate=2, clip_min=-5,
                 clip_max=5)    
         adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
+        utils.image_saver(images,filenames,folder_path)
         print("adversarial_images shape:{}".format(adversarial_images.shape))
     
     
