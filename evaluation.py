@@ -21,15 +21,17 @@ import json
 import adversarial.config as config
 import sys
 from optparse import OptionParser
+from functools import partial
 
 slim = tf.contrib.slim
 
-def evaluate_model(image_iterator):    
+def evaluate_model(image_iterator,image_saver):    
     accuracy_vector = []
     graph_eavl = tf.Graph()
     print ("evaluate_model graph is ready!")
     S = 0
     filenames, adv_images,orig_images = next(image_iterator,(None,None))
+    image_saver(orig_images,filenames)
     S += utils.dissimilariry(orig_images,adv_images)
     with graph_eavl.as_default():    
         x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
@@ -55,9 +57,10 @@ def evaluate_model(image_iterator):
                 print("Pricessing image num:{}".format(counter))                            
                 sys.stdout.flush()                
                 filenames, adv_images, orig_images = next(image_iterator,(None,None))
+                image_saver(orig_images,filenames)
                 S += utils.dissimilariry(orig_images,adv_images)
                 counter +=1 
-                if counter > 999:                
+                if counter > 999:
                     break
                             
                 
@@ -83,11 +86,11 @@ def main():
         parser.print_help()
         sys.exit(1)        
     
-    folder_path = os.path.join(config.ADVERSARIAL_FOLDER,options.mode)
+    folder_path = os.path.join(config.ADVERSARIAL_FOLDER,options.mode,str(options.eps))
     os.makedirs(folder_path,exist_ok=True)
     generator = models.adversarial_generator(options.mode, importer.batch_shape, eps=options.eps,is_return_orig_images=True)
-        
-    win_loss,dissimilarity = evaluate_model(generator)    
+    image_saver = partial(utils.image_saver,path=folder_path)
+    win_loss,dissimilarity = evaluate_model(generator,image_saver)
     fname = os.path.join(folder_path,"stat_eps_{}".format(options.eps))
     stat = {"win_loss":win_loss,"dissimilarity":dissimilarity}
     with open(fname, 'w') as file:

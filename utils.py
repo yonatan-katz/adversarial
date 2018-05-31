@@ -11,9 +11,20 @@ import glob
 import pandas as pd
 import os
 import json
+from scipy.misc import imsave
 
 '''Calculate euclidian distance between two image arrays
 '''
+def image_saver(images,fnames,path):
+    for image,fname in zip(images,fnames):
+        png =  make_png_image(image)
+        ffname = os.path.join(path,fname)
+        imsave(ffname,png)
+
+def make_png_image(a):
+    a = np.uint8((a+1.0)/2.0*255.0)        
+    return a     
+
 def dissimilariry(orig_images,adv_images):
     S = 0
     for orig,adversal in zip(orig_images,adv_images):

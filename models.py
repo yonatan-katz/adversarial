@@ -128,6 +128,7 @@ def test_deep_full_simple_model():
             W2 = tf.constant([[-2.4, 1.2], [0.5, -2.3]], dtype=tf.as_dtype(x.dtype))
     
             res = tf.matmul(h1, W2)
+            print("Prob:",res)
             return res
     
     
@@ -136,6 +137,9 @@ def test_deep_full_simple_model():
     attack = DeepFool(model=model, sess=sess)
     x_val = np.random.rand(1, 2)
     x_val = np.array(x_val, dtype=np.float32)
+    logits = model.get_logits(x_val)
+    ligits_val = sess.run(logits)
+    print("Logits: {}, shape:{}".format(ligits_val,ligits_val.shape))       
 
     x_adv = attack.generate_np(
             x_val, over_shoot=0.02, max_iter=5,
@@ -149,33 +153,54 @@ def test_deep_full_simple_model():
 def test_deep_full_inception_v3_model():
     class Inception_V3_Model(Model):
         """A very simple neural network
-        """        
-        def get_logits(self, x_input):
-            NUM_CLASSES = 1000
-            """Constructs model and return probabilities for given input."""
-            #reuse = True if self.built else None
+        """         
+        def __init__(self,x_input):
+            
             with slim.arg_scope(inception.inception_v3_arg_scope()):
                 _, end_points = inception.inception_v3(
-                                x_input, num_classes=NUM_CLASSES, is_training=False,
-                                reuse=False)
+                                x_input, num_classes=importer.num_classes, is_training=False,
+                                reuse=False)       
+            
+        
+            
+        def get_logits(self, x_input):            
+            """Constructs model and return probabilities for given input."""
+            #reuse = True if self.built else None          
+            with slim.arg_scope(inception.inception_v3_arg_scope()):
+                _, end_points = inception.inception_v3(
+                                x_input, num_classes=importer.num_classes, is_training=False,
+                                reuse=True)
+            
             self.built = True
-            output = end_points['Logits']
-            probs = output.op.inputs[0]
+            output = end_points['Logits']            
+            probs = output.op.inputs[0]                        
+            print("Prob:",probs)
             return probs
     
     
+    tf.reset_default_graph()        
     sess = tf.Session()
-    model = Inception_V3_Model()
-    attack = DeepFool(model=model, sess=sess)
-    x_val = np.random.rand(1, 299,299,3)
-    x_val = np.array(x_val, dtype=np.float32)
-
-    x_adv = attack.generate_np(
-            x_val, over_shoot=0.02, max_iter=5,
-            nb_candidate=2, clip_min=-5,
-            clip_max=5)    
-    adversarial_images = sess.run(model(x_adv))    
-    print("adversarial_images shape:{}".format(adversarial_images.shape))
+    x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
+    with tf.Session() as sess:
+        #x_val = np.random.rand(1, 299,299,3)
+        #x_val = np.array(x_val, dtype=np.float32)
+        image_iterator = importer.load_images_generator(importer.batch_shape)
+        filenames, images = next(image_iterator,(None,None))
+        model = Inception_V3_Model(images)
+        saver = tf.train.Saver()
+        saver.restore(sess, importer.checkpoint_path)            
+        attack = DeepFool(model=model, sess=sess)
+        
+        logits = model.get_logits(images)
+        ligits_val = sess.run(logits)
+        print("Logits: {}, shape:{}".format(ligits_val,ligits_val.shape))       
+        
+        x_adv = attack.generate(
+                x_input, over_shoot=0.02, max_iter=5,
+                nb_candidate=2, clip_min=-5,
+                clip_max=5)    
+        adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
+        print("adversarial_images shape:{}".format(adversarial_images.shape))
     
     
 def test_deep_full_inception_v3_model__():
@@ -193,6 +218,8 @@ def test_deep_full_inception_v3_model__():
             self.built = True
             output = end_points['Logits']
             probs = output.op.inputs[0]
+            print("TF Prob:")
+            tf.Print(probs)
             return probs
         
         
@@ -219,8 +246,8 @@ def test_deep_full_inception_v3_model__():
         print("adversarial_images shape:{}".format(adversarial_images.shape))
 
 if __name__ == "__main__":
-    test_deep_full_inception_v3_model()
-    #test_deep_full_simple_model()
+   test_deep_full_inception_v3_model()
+   #test_deep_full_simple_model()
    
     
     
