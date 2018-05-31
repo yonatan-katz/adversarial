@@ -88,7 +88,11 @@ def main():
     
     folder_path = os.path.join(config.ADVERSARIAL_FOLDER,options.mode,str(options.eps))
     os.makedirs(folder_path,exist_ok=True)
-    generator = models.adversarial_generator(options.mode, importer.batch_shape, eps=options.eps,is_return_orig_images=True)
+    if options.mode == "fgsm" or options.mode == "ifgsm":
+        generator = models.adversarial_generator_basic(options.mode, importer.batch_shape, eps=options.eps,is_return_orig_images=True)
+    else:
+        generator = models.adversarial_generator_advanced(options.mode, importer.batch_shape, eps=options.eps,is_return_orig_images=True)
+        
     image_saver = partial(utils.image_saver,path=folder_path)
     win_loss,dissimilarity = evaluate_model(generator,image_saver)
     fname = os.path.join(folder_path,"stat_eps_{}".format(options.eps))
