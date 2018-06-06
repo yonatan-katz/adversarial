@@ -3,3 +3,4 @@ input/
 output/
 *.pyc
 src/
+log.txt

@@ -60,8 +60,7 @@ def evaluate_model(image_iterator,image_saver):
                 image_saver(orig_images,filenames)
                 S += utils.dissimilariry(orig_images,adv_images)
                 counter +=1 
-                #if counter > 999:
-                if counter > 5:
+                if counter > 999:
                     break
                             
                 
@@ -79,7 +78,7 @@ def evaluate_model(image_iterator,image_saver):
 def main():   
     parser = OptionParser()
     parser.add_option("-m","--mode",dest="mode",help="mode:[fgsm,ifgsm,deep_fool,carlini_wagner]")    
-    parser.add_option("--eps",dest="eps",help="eps parameter",type=float,default=importer.eps)    
+    parser.add_option("--eps",dest="eps",help="eps parameter",type=float,default=0.01)    
     
     (options, args) = parser.parse_args()    
     

@@ -113,18 +113,18 @@ def adversarial_generator_basic(mode,batch_shape,eps,is_return_orig_images=False
     supports deep fool and  and carlini wagner modes modes 
 '''
 def adversarial_generator_advanced(mode,batch_shape,eps,is_return_orig_images=False):                         
-    
+    print("adversarial attack mode:{}".format(mode))
     def next_images():
         tf.logging.set_verbosity(tf.logging.INFO)
         print("{} generator graph is ready!".format(mode))
         tf.reset_default_graph()        
         sess = tf.Session()
         x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
-        params = {'eps':eps}
+        params = {}
         model = InceptionModelLogits(importer.num_classes) 
     
         if mode == 'deep_fool':
-            graph = DeepFool(model)
+            graph = DeepFool(model,sess=sess)
             params['max_iter'] = 5
         elif mode == 'carlini_wagner':
             graph = CarliniWagnerL2(model)
