@@ -29,35 +29,40 @@ import json
 slim = tf.contrib.slim
 
 class InceptionModelProb(object):
-    def __init__(self, num_classes):
-        self.num_classes = num_classes
-        self.built = False
+    def __init__(self, num_classes,x_input):
+        self.num_classes = num_classes        
+        with slim.arg_scope(inception.inception_v3_arg_scope()):
+                _, end_points = inception.inception_v3(
+                    x_input, num_classes=importer.num_classes, is_training=False,
+                    reuse=False)       
 
     def __call__(self, x_input):
-        """Constructs model and return probabilities for given input."""
-        reuse = True if self.built else None
+        """Constructs model and return probabilities for given input."""        
         with slim.arg_scope(inception.inception_v3_arg_scope()):
             _, end_points = inception.inception_v3(
                             x_input, num_classes=self.num_classes, is_training=False,
-                            reuse=reuse)
-        self.built = True
+                            reuse=False)            
+        
         output = end_points['Predictions']
         probs = output.op.inputs[0]
         return probs
     
 class InceptionModelLogits(object):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes,x_input):
         self.num_classes = num_classes
-        self.built = False
+        self.num_classes = num_classes        
+        with slim.arg_scope(inception.inception_v3_arg_scope()):
+                _, end_points = inception.inception_v3(
+                    x_input, num_classes=importer.num_classes, is_training=False,
+                    reuse=False)       
 
     def __call__(self, x_input):
-        """Constructs model and return probabilities for given input."""
-        reuse = True if self.built else None
+        """Constructs model and return probabilities for given input."""        
         with slim.arg_scope(inception.inception_v3_arg_scope()):
             _, end_points = inception.inception_v3(
                             x_input, num_classes=self.num_classes, is_training=False,
-                            reuse=reuse)
-        self.built = True
+                            reuse=True)
+        
         output = end_points['Logits']
         logits = output.op.inputs[0]
         return logits
@@ -75,7 +80,7 @@ def adversarial_generator_basic(mode,batch_shape,eps,is_return_orig_images=False
         with graph_fgsm.as_default():    
             x_input = tf.placeholder(tf.float32, shape=batch_shape)
             
-            model = InceptionModelProb(importer.num_classes) 
+            model = InceptionModelProb(importer.num_classes,x_input) 
             params = {'eps':eps}
             if mode == 'fgsm': 
                 graph = FastGradientMethod(model)
@@ -121,7 +126,7 @@ def adversarial_generator_advanced(mode,batch_shape,eps,is_return_orig_images=Fa
         sess = tf.Session()
         x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
         params = {}
-        model = InceptionModelLogits(importer.num_classes)         
+        model = InceptionModelLogits(importer.num_classes,x_input)         
         if mode == 'deep_fool':
             graph = DeepFool(model,sess=sess)
             params['max_iter'] = 5
