@@ -134,6 +134,8 @@ def adversarial_generator_advanced(mode,batch_shape,eps,is_return_orig_images=Fa
             graph = CarliniWagnerL2(model,sess=sess)
             params["confidence"] = 0
             params["initial_const"] = 10
+            params['learning_rate'] = 0.1
+            params['max_iterations'] = 10
         else:
             raise Exception("Not supported mode")             
             
@@ -149,8 +151,8 @@ def adversarial_generator_advanced(mode,batch_shape,eps,is_return_orig_images=Fa
             target = np.expand_dims(np.zeros(importer.num_classes),1)
             if mode == 'carlini_wagner':
                 assert(len(true_classes) == 1)
-                params["y"] = target[true_classes[0]] = 1        
-                print("parma tagret is set")
+                target[true_classes[0]] = 1                    
+                params["y"] = target
             x_adv = graph.generate(x_input, **params)
             adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
             print("Image:{}, diff:{}".format(filenames[0],np.sum(np.abs(images[0]-adversarial_images[0]))))
@@ -185,47 +187,54 @@ def test_inception_v3_model(atack_type):
             
             self.built = True
             output = end_points['Logits']            
-            probs = output.op.inputs[0]                        
-            print("Prob:",probs)
+            probs = output.op.inputs[0]                                    
             return probs
     
-    
-    tf.reset_default_graph()        
-    sess = tf.Session()
-    x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
-    folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"test_deep_full_inception_v3_model")
-    os.makedirs(folder_path,exist_ok=True)
-    with tf.Session() as sess:        
-        image_iterator = importer.load_images_generator(importer.batch_shape)
-        filenames, images = next(image_iterator,(None,None))
-        true_classes = importer.filename_to_class(filenames)
-        model = Inception_V3_Model(images)        
-        params = {}
-        if atack_type == "deep_fool":
-            attack = DeepFool(model=model,sess=sess)
-            params['max_iter'] = 5
-        elif atack_type == "carlini":
-            attack = CarliniWagnerL2(model,sess=sess)
-            params["confidence"] = 0
-            params["initial_const"] = 10
-            target = np.expand_dims(np.zeros(importer.num_classes),1)
-            assert(len(true_classes) == 1)
-            params["y"] = target[true_classes[0]] = 1
-        else:
-            raise("Bad attack type!")              
-        
-        variables = tf.get_collection(tf.GraphKeys.VARIABLES)                
-        saver = tf.train.Saver(variables)
-        saver.restore(sess, importer.checkpoint_path)            
-        x_adv = attack.generate(x_input,**params)
-        writer = tf.summary.FileWriter("/tmp/log/", sess.graph)
-        adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
-        utils.image_saver(images,filenames,folder_path)
-        print("adversarial_images shape:{}".format(adversarial_images.shape))
-        writer.close()
+    counter = 0
+    image_iterator = importer.load_images_generator(importer.batch_shape)
+    while True:
+        tf.reset_default_graph()        
+        sess = tf.Session()
+        x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
+        folder_path = os.path.join(config.ADVERSARIAL_FOLDER,atack_type+"_test")
+        os.makedirs(folder_path,exist_ok=True)        
+        with tf.Session() as sess:                            
+            filenames, images = next(image_iterator,(None,None))
+            print(filenames)            
+            true_classes = importer.filename_to_class(filenames)
+            model = Inception_V3_Model(np.float32(images))
+            params = {}
+            if atack_type == "deep_fool":
+                attack = DeepFool(model=model,sess=sess)
+                params['max_iter'] = 5
+            elif atack_type == "carlini":
+                attack = CarliniWagnerL2(model,sess=sess)
+                params["confidence"] = 0
+                params["initial_const"] = 10
+                params['learning_rate'] = 0.01
+                params['max_iterations'] = 100
+                target = np.expand_dims(np.zeros(importer.num_classes),1)
+                assert(len(true_classes) == 1)
+                target[true_classes[0]] = 1
+                params["y"] = target
+            else:
+                raise("Bad attack type!")              
+            
+            variables = tf.get_collection(tf.GraphKeys.VARIABLES)                
+            saver = tf.train.Saver(variables)
+            saver.restore(sess, importer.checkpoint_path)            
+            x_adv = attack.generate(x_input,**params)
+            #writer = tf.summary.FileWriter("/tmp/log/", sess.graph)
+            adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
+            utils.image_saver(adversarial_images,filenames,folder_path)
+            print("adversarial_images counter:{}".format(counter))
+            #writer.close()
+            counter += 1
+            if counter == 1000:
+                break
 
 if __name__ == "__main__":
-   test_inception_v3_model("deep_fool")
+   test_inception_v3_model("carlini")
    #test_deep_full_simple_model()
    
     
