@@ -150,6 +150,7 @@ def adversarial_generator_advanced(mode,batch_shape,eps,is_return_orig_images=Fa
             if mode == 'carlini_wagner':
                 assert(len(true_classes) == 1)
                 params["y"] = target[true_classes[0]] = 1        
+                print("parma tagret is set")
             x_adv = graph.generate(x_input, **params)
             adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
             print("Image:{}, diff:{}".format(filenames[0],np.sum(np.abs(images[0]-adversarial_images[0]))))
