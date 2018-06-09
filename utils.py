@@ -12,6 +12,9 @@ import pandas as pd
 import os
 import json
 from scipy.misc import imsave
+import matplotlib.pyplot as plt
+import pandas as pd
+
 
 '''Calculate euclidian distance between two image arrays
 '''
@@ -29,20 +32,54 @@ def dissimilariry(orig_images,adv_images):
     S = 0
     for orig,adversal in zip(orig_images,adv_images):
         S += np.linalg.norm([orig-adversal])/np.linalg.norm([orig])
-    return S
-     
+    return S 
         
     
 def create_perf_vector(folder):    
-    pattern = os.path.join(folder,"stat_eps*")    
+    path = os.path.join(folder)    
     dissimilarity = []
     win_loss = []
-    for fname in glob.glob(pattern):        
-        with open(fname, 'r') as file:
-           d = json.load(file) 
-           dissimilarity.append(float(d['dissimilarity']) / 1000.0)#we work with data set of 1000 images!
-           win_loss.append(float(d['win_loss']))
+    #for fname in glob.glob(pattern,recursive=True):  
+    for root, subdirs, files in os.walk(path):
+        for file in sorted(files):                    
+            if "stat_eps" in file:                
+                with open(os.path.join(root,file), 'r') as f:
+                   d = json.load(f) 
+                   dissimilarity.append(float(d['dissimilarity']) / 1000.0)#we work with data set of 1000 images!
+                   win_loss.append(float(d['win_loss']))
            
     df = pd.DataFrame(win_loss,index=dissimilarity)
     return df.sort_index()
+
+def plot_attack():
+    fgsm = create_perf_vector("output/adversarial/fgsm")
+    ifgsm = create_perf_vector("output/adversarial/ifgsm")
+    merged = pd.concat([fgsm,ifgsm],axis=1)
+    merged.columns = ['fgsm','ifgsm']
+    merged = merged.fillna(method='bfill')
+    merged.plot()
+    
+    
+    
+#    fig, ax1 = plt.subplots()
+#    color = 'tab:red'
+#    ax1.set_xlabel('dissimilarity')
+#    ax1.set_ylabel('accuracy (%)', color=color)
+#    ax1.plot(fgsm.index, fgsm.ix[:,0], color=color)
+#    ax1.tick_params(axis='y', labelcolor=color)
+#    
+#    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+#
+#    color = 'tab:blue'
+#    ax2.set_ylabel('accuracy (%)', color=color)  # we already handled the x-label with ax1
+#    ax2.plot(ifgsm.index, ifgsm.ix[:,0], color=color)
+#    ax2.tick_params(axis='y', labelcolor=color)
+#    
+#    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    plt.show()
+    
+if __name__ == "__main__":
+    plot_attack()
+    
+    
     
