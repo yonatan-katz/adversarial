@@ -25,7 +25,7 @@ import sys
 tensorflow_master = ""
 checkpoint_path   = "./input/inception-v3/inception_v3.ckpt"
 input_dir_data        = "./data/"
-input_dir_images     = os.path.join(input_dir_data,"images")
+orig_dir_images     = os.path.join(input_dir_data,"images")
 max_epsilon       = 16.0
 image_width       = 299
 image_height      = 299
@@ -36,7 +36,7 @@ eps = 2.0 * max_epsilon / 255.0
 batch_shape = [batch_size, image_height, image_width, 3]
 num_classes = 1001
 
-def load_images_generator(batch_shape):
+def load_images_generator(batch_shape,input_dir_images=orig_dir_images):
     images = np.zeros(batch_shape,np.float32)
     filenames = []
     idx = 0
@@ -98,7 +98,7 @@ def dissimilarity(folder):
     N = 0
     for ffname in glob.glob(os.path.join(folder, '*.png')):        
         fname = os.path.basename(ffname)
-        orig_fname = os.path.join(input_dir_images,fname)
+        orig_fname = os.path.join(orig_dir_images,fname)
         orig_image = imread(orig_fname,mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
         #in order to make simmilar image we have to make the same transformation as adversarial image!
         orig_image = transform(orig_image)

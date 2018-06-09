@@ -61,11 +61,7 @@ def evaluate_model(image_iterator,image_saver):
                 S += utils.dissimilariry(orig_images,adv_images)
                 counter +=1 
                 if counter > 999:
-                    break
-                            
-                
-    
-        
+                    break  
         
     true_labels = np.sum(accuracy_vector)
     false_labels = len(accuracy_vector) - true_labels
@@ -77,8 +73,9 @@ def evaluate_model(image_iterator,image_saver):
 
 def main():   
     parser = OptionParser()
-    parser.add_option("-m","--mode",dest="mode",help="mode:[fgsm,ifgsm,deep_fool,carlini_wagner]")    
-    parser.add_option("--eps",dest="eps",help="eps parameter",type=float,default=0.01)    
+    parser.add_option("-m","--mode",dest="mode",help="mode:[fgsm,ifgsm,deep_fool,carlini_wagner,manual], manual mode is just evalute inception model vs given image folder")    
+    parser.add_option("-f","--folder",dest="folder",help="folder with images to evaluate inception model with in the \manual\ mode")
+    parser.add_option("--eps",dest="eps",help="eps parameter",type=float,default=0.0)
     
     (options, args) = parser.parse_args()    
     
@@ -89,9 +86,12 @@ def main():
     folder_path = os.path.join(config.ADVERSARIAL_FOLDER,options.mode,str(options.eps))
     os.makedirs(folder_path,exist_ok=True)
     if options.mode == "fgsm" or options.mode == "ifgsm":
-        generator = models.adversarial_generator_basic(options.mode, importer.batch_shape, eps=options.eps,is_return_orig_images=True)
-    else:
-        generator = models.adversarial_generator_advanced(options.mode, importer.batch_shape, eps=options.eps,is_return_orig_images=True)
+        generator = models.adversarial_generator_basic(options.mode, importer.batch_shape,eps=options.eps,is_return_orig_images=True)
+    elif options.mode == "deep_fool" or options.mode == "carlini_wagner":
+        generator = models.adversarial_generator_advanced(options.mode, importer.batch_shape,eps=options.eps,is_return_orig_images=True)
+    elif options.mode == "manual":
+        generator = importer.load_images_generator(importer.batch_shape,input_dir_images=options.folder)
+        
         
     image_saver = partial(utils.image_saver,path=folder_path)
     win_loss,dissimilarity = evaluate_model(generator,image_saver)
