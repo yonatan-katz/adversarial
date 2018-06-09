@@ -211,8 +211,10 @@ def test_inception_v3_model(atack_type):
                 attack = CarliniWagnerL2(model,sess=sess)
                 params["confidence"] = 0
                 params["initial_const"] = 10
-                params['learning_rate'] = 0.01
+                params['learning_rate'] = 0.001
                 params['max_iterations'] = 100
+                params['clip_min'] = -1
+                params['clip_max'] = 1
                 target = np.expand_dims(np.zeros(importer.num_classes),1)
                 assert(len(true_classes) == 1)
                 target[true_classes[0]] = 1
