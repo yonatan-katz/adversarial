@@ -10,6 +10,7 @@ Created on Sat May 12 14:23:07 2018
 '''
 import tensorflow as tf
 from tensorflow.contrib.slim.nets import inception
+import adversarial.attack_replicator as attack_replicator
 import adversarial.importer as importer
 import adversarial.models as models
 import adversarial.utils as utils
@@ -73,8 +74,8 @@ def evaluate_model(image_iterator,image_saver):
 
 def main():   
     parser = OptionParser()
-    parser.add_option("-m","--mode",dest="mode",help="mode:[fgsm,ifgsm,deep_fool,carlini_wagner,manual], manual mode is just evalute inception model vs given image folder")    
-    parser.add_option("-f","--folder",dest="folder",help="folder with images to evaluate inception model with in the \manual\ mode")
+    parser.add_option("-m","--mode",dest="mode",help="mode:[fgsm,ifgsm,deep_fool,manual], manual mode is just evalute inception model vs given image folder")    
+    parser.add_option("-r","--replicate",dest="replicate",help="replicate finished attack with different eps, is applied to deep_fool and carlini wagner attacks only")
     parser.add_option("--eps",dest="eps",help="eps parameter",type=float,default=0.0)
     
     (options, args) = parser.parse_args()    
@@ -85,12 +86,15 @@ def main():
     
     folder_path = os.path.join(config.ADVERSARIAL_FOLDER,options.mode,str(options.eps))
     os.makedirs(folder_path,exist_ok=True)
-    if options.mode == "fgsm" or options.mode == "ifgsm":
-        generator = models.adversarial_generator_basic(options.mode, importer.batch_shape,eps=options.eps,is_return_orig_images=True)
-    elif options.mode == "deep_fool" or options.mode == "carlini_wagner":
-        generator = models.adversarial_generator_advanced(options.mode, importer.batch_shape,eps=options.eps,is_return_orig_images=True)
-    elif options.mode == "manual":
-        generator = importer.load_images_generator(importer.batch_shape,input_dir_images=options.folder)
+    if options.replicate is not None:
+        generator = attack_replicator.replicate_attack(options.mode,options.eps)
+    else:
+        if options.mode == "fgsm" or options.mode == "ifgsm":
+            generator = models.adversarial_generator_basic(options.mode, importer.batch_shape,eps=options.eps,is_return_orig_images=True)
+        elif options.mode == "deep_fool":       
+            generator = models.adversarial_generator_deep_fool(options.mode, importer.batch_shape,eps=options.eps,is_return_orig_images=True)
+        else:
+            raise Exception("Bad attack mode!")
         
         
     image_saver = partial(utils.image_saver,path=folder_path)

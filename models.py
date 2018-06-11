@@ -117,7 +117,7 @@ def adversarial_generator_basic(mode,batch_shape,eps,is_return_orig_images=False
 '''Create adversarial images from the orignal data set
     supports deep fool and  and carlini wagner modes modes 
 '''
-def adversarial_generator_advanced(mode,batch_shape,eps,is_return_orig_images=False):                         
+def adversarial_generator_deep_fool(mode,batch_shape,eps,is_return_orig_images=False):                         
     print("adversarial attack mode:{}".format(mode))
     def next_images():
         tf.logging.set_verbosity(tf.logging.INFO)
@@ -129,13 +129,7 @@ def adversarial_generator_advanced(mode,batch_shape,eps,is_return_orig_images=Fa
         model = InceptionModelLogits(importer.num_classes,x_input)         
         if mode == 'deep_fool':
             graph = DeepFool(model,sess=sess)
-            params['max_iter'] = 5
-        elif mode == 'carlini_wagner':
-            graph = CarliniWagnerL2(model,sess=sess)
-            params["confidence"] = 0
-            params["initial_const"] = 10
-            params['learning_rate'] = 0.1
-            params['max_iterations'] = 10
+            params['max_iter'] = 5        
         else:
             raise Exception("Not supported mode")             
             
