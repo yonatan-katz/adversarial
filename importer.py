@@ -53,6 +53,22 @@ def load_images_generator(batch_shape,input_dir_images=orig_dir_images):
             idx = 0
     if idx > 0:
         yield filenames, images
+        
+'''Load specific image according to the requested index:0..999
+'''
+def load_images_at_index(image_index,input_dir_images=orig_dir_images):
+    assert(image_index>=0 and image_index<=999)
+    filenames = []
+    for filepath in sorted(tf.gfile.Glob(os.path.join(input_dir_images, '*.png'))):
+        filenames.append(filepath)        
+        
+    filepath = filenames[image_index]    
+    image_data = np.zeros(batch_shape,np.float32)
+    with tf.gfile.Open(filepath, "rb") as f:
+        image_data[0, :, :, :] = imread(f, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+        
+    return os.path.basename(filepath),image_data  
+    
 
 
 def show_image(a, fmt='png'):

@@ -24,6 +24,7 @@ from optparse import OptionParser
 from scipy.misc import imsave
 from scipy.misc import imread
 import json
+from optparse import OptionParser
 
 
 slim = tf.contrib.slim
@@ -158,64 +159,46 @@ def adversarial_generator_deep_fool(mode,batch_shape,eps,is_return_orig_images=F
     return  next_images()   
 
 
-def test_inception_v3_model(atack_type):
-    class Inception_V3_Model(Model):
-        """A very simple neural network
-        """         
-        def __init__(self,x_input):
-            
-            with slim.arg_scope(inception.inception_v3_arg_scope()):
-                _, end_points = inception.inception_v3(
-                                x_input, num_classes=importer.num_classes, is_training=False,
-                                reuse=False)       
-            
+class Inception_V3_Model(Model):
+    """A very simple neural network
+    """         
+    def __init__(self,x_input):
         
-            
-        def get_logits(self, x_input):            
-            """Constructs model and return probabilities for given input."""
-            #reuse = True if self.built else None          
-            with slim.arg_scope(inception.inception_v3_arg_scope()):
-                _, end_points = inception.inception_v3(
-                                x_input, num_classes=importer.num_classes, is_training=False,
-                                reuse=True)
-            
-            self.built = True
-            output = end_points['Logits']            
-            probs = output.op.inputs[0]                                    
-            return probs
+        with slim.arg_scope(inception.inception_v3_arg_scope()):
+            _, end_points = inception.inception_v3(
+                            x_input, num_classes=importer.num_classes, is_training=False,
+                            reuse=False)       
+        
     
+        
+    def get_logits(self, x_input):            
+        """Constructs model and return probabilities for given input."""
+        #reuse = True if self.built else None          
+        with slim.arg_scope(inception.inception_v3_arg_scope()):
+            _, end_points = inception.inception_v3(
+                            x_input, num_classes=importer.num_classes, is_training=False,
+                            reuse=True)
+        
+        self.built = True
+        output = end_points['Logits']            
+        probs = output.op.inputs[0]                                    
+        return probs
+
+def deep_fool_attack():   
     counter = 0
-    image_iterator = importer.load_images_generator(importer.batch_shape)
+    image_iterator = importer.load_images_generator(importer.batch_shape)    
+    tf.reset_default_graph()        
+    sess = tf.Session()
+    x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
+    folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"deep_full_base")
+    os.makedirs(folder_path,exist_ok=True)        
     while True:
-        tf.reset_default_graph()        
-        sess = tf.Session()
-        x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
-        folder_path = os.path.join(config.ADVERSARIAL_FOLDER,atack_type+"_test")
-        os.makedirs(folder_path,exist_ok=True)        
         with tf.Session() as sess:                            
-            filenames, images = next(image_iterator,(None,None))
-            print(filenames)            
-            true_classes = importer.filename_to_class(filenames)
+            filenames, images = next(image_iterator,(None,None))        
             model = Inception_V3_Model(np.float32(images))
-            params = {}
-            if atack_type == "deep_fool":
-                attack = DeepFool(model=model,sess=sess)
-                params['max_iter'] = 5
-            elif atack_type == "carlini":
-                attack = CarliniWagnerL2(model,sess=sess)
-                params["confidence"] = 0
-                params["initial_const"] = 10
-                params['learning_rate'] = 0.001
-                params['max_iterations'] = 100
-                params['clip_min'] = -1
-                params['clip_max'] = 1
-                target = np.expand_dims(np.zeros(importer.num_classes),1)
-                assert(len(true_classes) == 1)
-                target[true_classes[0]] = 1
-                params["y"] = target
-            else:
-                raise("Bad attack type!")              
-            
+            params = {}        
+            attack = DeepFool(model=model,sess=sess)
+            params['max_iter'] = 5       
             variables = tf.get_collection(tf.GraphKeys.VARIABLES)                
             saver = tf.train.Saver(variables)
             saver.restore(sess, importer.checkpoint_path)            
@@ -226,12 +209,64 @@ def test_inception_v3_model(atack_type):
             print("adversarial_images counter:{}".format(counter))
             #writer.close()
             counter += 1
-            if counter == 1000:
+            if counter  == 999:
+                print("Attack is finished")
                 break
+        
+        
+def carlini_wagner_attack(image_index):    
+    filename,orig_image = importer.load_images_at_index(image_index)
+    tf.reset_default_graph()        
+    sess = tf.Session()
+    x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
+    folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"carlini_wagner_base")
+    os.makedirs(folder_path,exist_ok=True)        
+    with tf.Session() as sess:        
+        true_classes = importer.filename_to_class([filename])
+        model = Inception_V3_Model(np.float32(orig_image))
+        params = {}                
+        attack = CarliniWagnerL2(model,sess=sess)
+        params["confidence"] = 0
+        params["initial_const"] = 10
+        #params['learning_rate'] = 0.001
+        #params['max_iterations'] = 100
+        params['learning_rate'] = 0.1
+        params['max_iterations'] = 2
+        params['clip_min'] = -1
+        params['clip_max'] = 1
+        target = np.zeros([importer.num_classes,importer.batch_size])
+        index = 0
+        print (true_classes)
+        for t in true_classes:                
+            target[t][index] = 1            
+            index += 1            
+        params["y"] = target      
+        
+        variables = tf.get_collection(tf.GraphKeys.VARIABLES)                
+        saver = tf.train.Saver(variables)
+        saver.restore(sess, importer.checkpoint_path)            
+        x_adv = attack.generate(x_input,**params)
+        #writer = tf.summary.FileWriter("/tmp/log/", sess.graph)
+        adversarial_images = sess.run(x_adv, feed_dict={x_input: orig_image})
+        utils.image_saver(adversarial_images,[filename],folder_path)        
+        #writer.close()
+    
+        
 
-if __name__ == "__main__":
-   test_inception_v3_model("carlini")
-   #test_deep_full_simple_model()
+if __name__ == "__main__":   
+   parser = OptionParser()
+   parser.add_option("-m","--mode",dest="mode",help="mode:[deep_fool,carlini] attack type to make")
+   parser.add_option("--index",dest="index",type=int,help="image index to attack, is applied only to carlini wagner attack")    
+   
+   (options, args) = parser.parse_args()    
+   if not options.mode:
+       parser.print_help()
+       sys.exit(1)        
+       
+   if options.mode == "deep_fool":
+       deep_fool_attack()
+   elif  options.mode == "carlini":       
+       carlini_wagner_attack(options.index) 
    
     
     

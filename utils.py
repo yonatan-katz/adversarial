@@ -38,8 +38,7 @@ def dissimilariry(orig_images,adv_images):
 def create_perf_vector(folder):    
     path = os.path.join(folder)    
     dissimilarity = []
-    win_loss = []
-    #for fname in glob.glob(pattern,recursive=True):  
+    win_loss = []    
     for root, subdirs, files in os.walk(path):
         for file in sorted(files):                    
             if "stat_eps" in file:                
