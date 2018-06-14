@@ -228,10 +228,8 @@ def carlini_wagner_attack(image_index):
         attack = CarliniWagnerL2(model,sess=sess)
         params["confidence"] = 0
         params["initial_const"] = 10
-        #params['learning_rate'] = 0.001
-        #params['max_iterations'] = 100
-        params['learning_rate'] = 0.1
-        params['max_iterations'] = 2
+        params['learning_rate'] = 0.001
+        params['max_iterations'] = 100
         params['clip_min'] = -1
         params['clip_max'] = 1
         target = np.zeros([importer.num_classes,importer.batch_size])
