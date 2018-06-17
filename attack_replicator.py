@@ -25,11 +25,12 @@ def replicate_attack(attack_type,eps):
             idx = 0
             for fname,image in zip(filenames,images):
                 attack_image_path = os.path.join(attack_base_folder,fname)
-                attack_images_diff[idx, :, :, :] = image + eps* (image - imread(attack_image_path, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0)
+                adv_image = imread(attack_image_path, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+                attack_images_diff[idx, :, :, :] = image + eps * (image - adv_image)                
                 idx +=1                          
         
             count +=1       
-            yield filenames,attack_images_diff,images
+            yield filenames,attack_images_diff,images            
         else:
             yield None,None,None
         

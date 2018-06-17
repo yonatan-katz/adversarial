@@ -42,7 +42,7 @@ class InceptionModelProb(object):
         with slim.arg_scope(inception.inception_v3_arg_scope()):
             _, end_points = inception.inception_v3(
                             x_input, num_classes=self.num_classes, is_training=False,
-                            reuse=False)            
+                            reuse=True)            
         
         output = end_points['Predictions']
         probs = output.op.inputs[0]

@@ -1,6 +1,7 @@
 #!/bin/bash
-declare -a eps=("0.45" "0.55" "0.6") 
-declare -a mode=("deep_fool")
+declare -a eps=("2.0") 
+#declare -a mode=("deep_fool")
+declare -a mode=("carlini_wagner")
 for e in "${eps[@]}"
 do
         for m in "${mode[@]}"

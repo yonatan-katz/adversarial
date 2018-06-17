@@ -58,23 +58,23 @@ def evaluate_model(image_iterator,image_saver):
                 print("Pricessing image num:{}".format(counter))                            
                 sys.stdout.flush()                
                 filenames, adv_images, orig_images = next(image_iterator,(None,None))
-                image_saver(orig_images,filenames)
+                image_saver(adv_images,filenames)
                 S += utils.dissimilariry(orig_images,adv_images)
                 counter +=1 
-                if counter > 999:
+                if counter > 999:                
                     break  
         
     true_labels = np.sum(accuracy_vector)
     false_labels = len(accuracy_vector) - true_labels
     win_loss = (np.float32(true_labels) / len(accuracy_vector)) * 100.0
-    dissimilarity = S
+    dissimilarity = S / counter
     print ("dissimilarity:{},true labels:{}, false labels:{},win_loss:{}".format(S,true_labels,false_labels,win_loss))        
     return win_loss,dissimilarity
     
 
 def main():   
     parser = OptionParser()
-    parser.add_option("-m","--mode",dest="mode",help="mode:[fgsm,ifgsm,deep_fool,manual], manual mode is just evalute inception model vs given image folder")    
+    parser.add_option("-m","--mode",dest="mode",help="mode:[fgsm,ifgsm,deep_fool,carlini_wagner,manual], manual mode is just evalute inception model vs given image folder")    
     parser.add_option("-r","--replicate",dest="replicate",help="replicate finished attack with different eps, is applied to deep_fool and carlini wagner attacks only")
     parser.add_option("--eps",dest="eps",help="eps parameter",type=float,default=0.0)
     
@@ -87,11 +87,12 @@ def main():
     folder_path = os.path.join(config.ADVERSARIAL_FOLDER,options.mode,str(options.eps))
     os.makedirs(folder_path,exist_ok=True)
     if options.replicate is not None:
+        print("Attack eps: {}".format(options.eps))
         generator = attack_replicator.replicate_attack(options.mode,options.eps)
     else:
         if options.mode == "fgsm" or options.mode == "ifgsm":
             generator = models.adversarial_generator_basic(options.mode, importer.batch_shape,eps=options.eps,is_return_orig_images=True)
-        elif options.mode == "deep_fool":       
+        elif options.mode == "deep_fool" or options.mode == 'carlini_wagner':
             generator = models.adversarial_generator_deep_fool(options.mode, importer.batch_shape,eps=options.eps,is_return_orig_images=True)
         else:
             raise Exception("Bad attack mode!")
