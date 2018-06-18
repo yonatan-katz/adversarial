@@ -7,7 +7,7 @@ Created on Wed May 23 20:37:11 2018
 """
 
 import numpy as np
-import glob
+import adversarial.importer as importer
 import pandas as pd
 import os
 import json
@@ -17,6 +17,9 @@ import pandas as pd
 from optparse import OptionParser
 from scipy.misc import imread
 import sys
+import tensorflow as tf
+from tensorflow.contrib.slim.nets import inception
+slim = tf.contrib.slim
 
 '''Calculate euclidian distance between two image arrays
 '''
@@ -53,6 +56,33 @@ def create_perf_vector(folder):
     df = pd.DataFrame(win_loss,index=dissimilarity)
     return df.sort_index()
 
+
+def pred(full_image_path):
+    images = np.zeros(importer.batch_shape,np.float32)
+    image = imread(full_image_path, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+    images[0, :, :, :] = image
+    graph_eval = tf.Graph()
+    with graph_eval.as_default():    
+        x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
+
+        with slim.arg_scope(inception.inception_v3_arg_scope()):
+            _, end_points = inception.inception_v3(x_input, num_classes=importer.num_classes, is_training=False)
+        
+        predicted_labels = tf.argmax(end_points['Predictions'], 1)       
+        session_creator = tf.train.ChiefSessionCreator(
+                          checkpoint_filename_with_path=importer.checkpoint_path,
+                          master=importer.tensorflow_master)
+    
+        #TODO: I run out of memory when loading all images to the memory,
+        #      Make one image prediction in each iteration
+        #image_iterator = importer.load_images_generator(importer.input_dir_images, importer.batch_shape)                              
+        with tf.train.MonitoredSession(session_creator=session_creator) as sess:
+            filename = os.path.basename(full_image_path)
+            true_classes = importer.filename_to_class([filename])
+            predicted_classes = sess.run(predicted_labels, feed_dict={x_input: images})
+            print("True class: {}, predicted: {}".format(true_classes,predicted_classes))
+            #(true_classes==predicted_classes)[0])
+
 def plot_attack():
     #fgsm = create_perf_vector("output/adversarial/fgsm")
     #ifgsm = create_perf_vector("output/adversarial/ifgsm")
@@ -84,9 +114,9 @@ def plot_attack():
     
 if __name__ == "__main__":
    parser = OptionParser()
-   parser.add_option("-m","--mode",dest="mode",help="mode:[diff] ")
+   parser.add_option("-m","--mode",dest="mode",help="mode:[diff,pred] ")
    parser.add_option("--image_orig",dest="image_orig",type=str,help="image orig for dissimilarity check")    
-   parser.add_option("--image_adv",dest="image_adv",type=str,help="image adv for dissimilarity check")    
+   parser.add_option("--image_adv",dest="image_adv",type=str,help="image adv for dissimilarity check")
    
    (options, args) = parser.parse_args()    
    if not options.mode:
@@ -99,6 +129,11 @@ if __name__ == "__main__":
        image_adv = imread(options.image_adv, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
        diff = dissimilariry([image_orig],[image_adv])
        print("Dissimilarity: {}".format(diff))
+      
+   if options.mode == 'pred':
+      pred(options.image_orig)
+       
+  
        
    
        

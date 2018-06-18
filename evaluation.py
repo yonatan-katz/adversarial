@@ -28,13 +28,13 @@ slim = tf.contrib.slim
 
 def evaluate_model(image_iterator,image_saver):    
     accuracy_vector = []
-    graph_eavl = tf.Graph()
+    graph_eval = tf.Graph()
     print ("evaluate_model graph is ready!")
     S = 0
     filenames, adv_images,orig_images = next(image_iterator,(None,None))
     image_saver(orig_images,filenames)
     S += utils.dissimilariry(orig_images,adv_images)
-    with graph_eavl.as_default():    
+    with graph_eval.as_default():    
         x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
 
         with slim.arg_scope(inception.inception_v3_arg_scope()):
