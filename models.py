@@ -214,11 +214,18 @@ def deep_fool_attack():
                 break
         
         
-def carlini_wagner_attack(image_index):    
+def carlini_wagner_attack(image_index):  
+    import logging    
+
+    # create logger with 'spam_application'
+    logger = logging.getLogger('cleverhans')
+    logger.setLevel(logging.DEBUG)
+
     filename,orig_image = importer.load_images_at_index(image_index)
     tf.reset_default_graph()        
     sess = tf.Session()
     x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
+    y = tf.placeholder(tf.float32, shape=(None,importer.num_classes))
     folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"carlini_wagner_base")
     os.makedirs(folder_path,exist_ok=True)        
     with tf.Session() as sess:        
@@ -228,25 +235,32 @@ def carlini_wagner_attack(image_index):
         attack = CarliniWagnerL2(model,sess=sess)
         params["confidence"] = 0
         params["initial_const"] = 10
-        params['learning_rate'] = 0.001
-        params['max_iterations'] = 100
+        #params['learning_rate'] = 0.001
+        params['learning_rate'] = 0.01
+        params['max_iterations'] = 10
         params['clip_min'] = -1
         params['clip_max'] = 1
+        params['batch_size'] = 1001
         target = np.zeros([importer.num_classes,importer.batch_size])
         index = 0
         print (true_classes)
         for t in true_classes:                
             target[t][index] = 1            
             index += 1            
-        params["y"] = target      
+        #params["y"] = target      
+        params["y"] = None
+        #params["y_target"] = None
         
         variables = tf.get_collection(tf.GraphKeys.VARIABLES)                
         saver = tf.train.Saver(variables)
         saver.restore(sess, importer.checkpoint_path)            
-        x_adv = attack.generate(x_input,**params)
+        #x_adv = attack.generate_np(x_input,**params)
+        x_adv = attack.generate_np(orig_image,**params)
         #writer = tf.summary.FileWriter("/tmp/log/", sess.graph)
-        adversarial_images = sess.run(x_adv, feed_dict={x_input: orig_image})
-        utils.image_saver(adversarial_images,[filename],folder_path)        
+        #adversarial_images = sess.run(x_adv, feed_dict={x_input: orig_image})
+        #utils.image_saver(adversarial_images,[filename],folder_path)        
+        print("generated shape:{}".format(x_adv.shape))
+        utils.image_saver(x_adv,[filename],folder_path)        
         #writer.close()
     
         

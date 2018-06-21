@@ -50,7 +50,7 @@ def create_perf_vector(folder):
             if "stat_eps" in file:                
                 with open(os.path.join(root,file), 'r') as f:
                    d = json.load(f) 
-                   dissimilarity.append(float(d['dissimilarity']) / 1000.0)#we work with data set of 1000 images!
+                   dissimilarity.append(float(d['dissimilarity']))#we work with data set of 1000 images!
                    win_loss.append(float(d['win_loss']))
            
     df = pd.DataFrame(win_loss,index=dissimilarity)
@@ -84,37 +84,20 @@ def pred(full_image_path):
             #(true_classes==predicted_classes)[0])
 
 def plot_attack():
-    #fgsm = create_perf_vector("output/adversarial/fgsm")
-    #ifgsm = create_perf_vector("output/adversarial/ifgsm")
-    deep_fool = create_perf_vector("output/adversarial/deep_fool/replicated")
-    return deep_fool,
-    merged = pd.concat([fgsm,ifgsm,deep_fool],axis=1)
-    merged.columns = ['fgsm','ifgsm','deep_fool']
-    merged = merged.fillna(method='bfill')
-    merged.plot()
-    
-    
-    
-#    fig, ax1 = plt.subplots()
-#    color = 'tab:red'
-#    ax1.set_xlabel('dissimilarity')
-#    ax1.set_ylabel('accuracy (%)', color=color)
-#    ax1.plot(fgsm.index, fgsm.ix[:,0], color=color)
-#    ax1.tick_params(axis='y', labelcolor=color)
-#    
-#    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-#
-#    color = 'tab:blue'
-#    ax2.set_ylabel('accuracy (%)', color=color)  # we already handled the x-label with ax1
-#    ax2.plot(ifgsm.index, ifgsm.ix[:,0], color=color)
-#    ax2.tick_params(axis='y', labelcolor=color)
-#    
-#    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    fgsm = create_perf_vector("output/adversarial/fgsm")
+    ifgsm = create_perf_vector("output/adversarial/ifgsm")
+    #deep_fool = create_perf_vector("output/adversarial/deep_fool/replicated")    
+    m = pd.concat([fgsm,ifgsm],axis=1)
+    m.columns = ['fgsm','ifgsm']    
+    M = m[m.index<0.1]    
+    M.fgsm.dropna().plot()    
+    M.ifgsm.dropna().plot()
+    plt.legend(['fgsm','ifgsm']) 
     plt.show()
     
 if __name__ == "__main__":
    parser = OptionParser()
-   parser.add_option("-m","--mode",dest="mode",help="mode:[diff,pred] ")
+   parser.add_option("-m","--mode",dest="mode",help="mode:[diff,pred,viz] ")
    parser.add_option("--image_orig",dest="image_orig",type=str,help="image orig for dissimilarity check")    
    parser.add_option("--image_adv",dest="image_adv",type=str,help="image adv for dissimilarity check")
    
@@ -128,10 +111,17 @@ if __name__ == "__main__":
        image_orig = imread(options.image_orig, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
        image_adv = imread(options.image_adv, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
        diff = dissimilariry([image_orig],[image_adv])
-       print("Dissimilarity: {}".format(diff))
+       print("Dissimilarity: {}".format(diff))   
       
-   if options.mode == 'pred':
-      pred(options.image_orig)
+   elif options.mode == 'pred':
+       pred(options.image_orig)
+      
+   elif  options.mode == 'viz':
+       image_orig = imread(options.image_orig, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+       image_adv = imread(options.image_adv, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+       diff_image = make_png_image(image_orig - image_adv)
+       importer.show_image(diff_image)
+       
        
   
        
