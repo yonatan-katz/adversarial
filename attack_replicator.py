@@ -15,7 +15,7 @@ from scipy.misc import imread
 from scipy.misc import imsave
 
 def replicate_attack(attack_type,eps):
-    attack_base_folder = os.path.join(config.ADVERSARIAL_FOLDER,attack_type,'base')    
+    attack_base_folder = os.path.join(config.ADVERSARIAL_FOLDER,"{}_base".format(attack_type))    
     image_iterator = importer.load_images_generator(importer.batch_shape)
     attack_images_diff = np.zeros(importer.batch_shape,np.float32)
     count = 0
@@ -26,6 +26,7 @@ def replicate_attack(attack_type,eps):
             for fname,image in zip(filenames,images):
                 attack_image_path = os.path.join(attack_base_folder,fname)
                 adv_image = imread(attack_image_path, mode='RGB').astype(np.float32)*2.0/255.0 - 1.0
+                print("replication eps:{}".format(eps))
                 attack_images_diff[idx, :, :, :] = image + eps * (image - adv_image)                
                 idx +=1                          
         

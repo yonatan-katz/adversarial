@@ -170,6 +170,7 @@ class Inception_V3_Model(Model):
                             reuse=False)       
         
     
+    
         
     def get_logits(self, x_input):            
         """Constructs model and return probabilities for given input."""
@@ -182,6 +183,17 @@ class Inception_V3_Model(Model):
         self.built = True
         output = end_points['Logits']            
         probs = output.op.inputs[0]                                    
+        return probs
+    
+    def get_probs(self,x_input):
+        """Constructs model and return probabilities for given input."""        
+        with slim.arg_scope(inception.inception_v3_arg_scope()):
+            _, end_points = inception.inception_v3(
+                            x_input, num_classes=importer.num_classes, is_training=False,
+                            reuse=True)            
+        
+        output = end_points['Predictions']
+        probs = output.op.inputs[0]
         return probs
 
 def deep_fool_attack():   
@@ -205,7 +217,7 @@ def deep_fool_attack():
             x_adv = attack.generate(x_input,**params)
             #writer = tf.summary.FileWriter("/tmp/log/", sess.graph)
             adversarial_images = sess.run(x_adv, feed_dict={x_input: images})
-            utils.image_saver(adversarial_images,filenames,folder_path)
+            utils.image_saver(advesrsarial_images,filenames,folder_path)
             print("adversarial_images counter:{}".format(counter))
             #writer.close()
             counter += 1
@@ -220,49 +232,30 @@ def carlini_wagner_attack(image_index):
     # create logger with 'spam_application'
     logger = logging.getLogger('cleverhans')
     logger.setLevel(logging.DEBUG)
-
     filename,orig_image = importer.load_images_at_index(image_index)
     tf.reset_default_graph()        
-    sess = tf.Session()
-    x_input = tf.placeholder(tf.float32, shape=importer.batch_shape)
-    y = tf.placeholder(tf.float32, shape=(None,importer.num_classes))
+    sess = tf.Session()        
     folder_path = os.path.join(config.ADVERSARIAL_FOLDER,"carlini_wagner_base")
     os.makedirs(folder_path,exist_ok=True)        
-    with tf.Session() as sess:        
-        true_classes = importer.filename_to_class([filename])
-        model = Inception_V3_Model(np.float32(orig_image))
-        params = {}                
-        attack = CarliniWagnerL2(model,sess=sess)
-        params["confidence"] = 0
-        params["initial_const"] = 10
-        #params['learning_rate'] = 0.001
-        params['learning_rate'] = 0.01
-        params['max_iterations'] = 10
-        params['clip_min'] = -1
-        params['clip_max'] = 1
-        params['batch_size'] = 1001
-        target = np.zeros([importer.num_classes,importer.batch_size])
-        index = 0
-        print (true_classes)
-        for t in true_classes:                
-            target[t][index] = 1            
-            index += 1            
-        #params["y"] = target      
-        params["y"] = None
-        #params["y_target"] = None
+    with tf.Session() as sess:                
+        model = Inception_V3_Model(np.float32(orig_image))        
+        attack = CarliniWagnerL2(model,sess=sess)        
+        params  = {
+                'confidence' : 0,                                      
+                'y': None, 
+                'max_iterations': 200, 
+                'learning_rate': 0.01,                    
+                "num_labels":1001,
+                'initial_const': 10,
+                'clip_min':-1,
+                'clip_max':1}
         
-        variables = tf.get_collection(tf.GraphKeys.VARIABLES)                
+        variables = tf.get_collection(tf.GraphKeys.VARIABLES)
         saver = tf.train.Saver(variables)
-        saver.restore(sess, importer.checkpoint_path)            
-        #x_adv = attack.generate_np(x_input,**params)
+        saver.restore(sess, importer.checkpoint_path)          
         x_adv = attack.generate_np(orig_image,**params)
-        #writer = tf.summary.FileWriter("/tmp/log/", sess.graph)
-        #adversarial_images = sess.run(x_adv, feed_dict={x_input: orig_image})
-        #utils.image_saver(adversarial_images,[filename],folder_path)        
         print("generated shape:{}".format(x_adv.shape))
-        utils.image_saver(x_adv,[filename],folder_path)        
-        #writer.close()
-    
+        utils.image_saver(x_adv,[filename],folder_path)   
         
 
 if __name__ == "__main__":   

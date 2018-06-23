@@ -55,6 +55,7 @@ def evaluate_model(image_iterator,image_saver):
                 true_classes = importer.filename_to_class(filenames)
                 predicted_classes = sess.run(predicted_labels, feed_dict={x_input: adv_images})            
                 accuracy_vector.append((true_classes==predicted_classes)[0])
+                print("Accuracy:",accuracy_vector)
                 print("Pricessing image num:{}".format(counter))                            
                 sys.stdout.flush()                
                 filenames, adv_images, orig_images = next(image_iterator,(None,None))
